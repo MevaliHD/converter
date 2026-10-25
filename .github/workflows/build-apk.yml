@@ -1,0 +1,34 @@
+name: Build APK
+on:
+  workflow_dispatch:
+  push:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find project
+        id: loc
+        run: |
+          set -e
+          if [ ! -f settings.gradle ]; then
+            Z=$(ls *.zip | head -n1)
+            mkdir -p _src && unzip -q -o "$Z" -d _src
+          fi
+          F=$(find . -name settings.gradle | head -n1)
+          echo "dir=$(dirname "$F")" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build
+        working-directory: ${{ steps.loc.outputs.dir }}
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LocalConvert-APK
+          path: ${{ steps.loc.outputs.dir }}/app/build/outputs/apk/debug/*.apk
